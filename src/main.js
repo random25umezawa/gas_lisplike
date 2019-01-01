@@ -3,7 +3,6 @@ var funcs = {};
 var TYPES = {
 	STR:1<<6,
 	VAR:1<<7,
-	//TOKEN:"t",
 	FNAME:1<8,
 	BOOL:1<<4,
 	NUMBER:(1<<2)|(1<<3),
@@ -21,16 +20,6 @@ var parse = function(input){
 		w:['\t','\r','\n','\0',' ','　',undefined].reduce(function(a,b){a[b]=true;return a},{}),
 		le:[')',']','}'].reduce(function(a,b){a[b]=true;return a},{}),
 		te:['\t','\r','\n','\0',' ','　',')',']','}'].reduce(function(a,b){a[b]=true;return a},{}),
-		/*
-		t:{
-			'(':p.E,
-			'{':p.LE,
-			'[':p.ARR,
-			'*':p.COM,
-			'$':p.VAR,
-			'"':p.STR
-		},
-		*/
 		WM:function(){
 			while(p.w[input[c]]) c++;
 		},
@@ -137,15 +126,12 @@ var parse = function(input){
 				else break;
 			}
 			return p.E();
-			//p.WM();
 		}
 	}
-	//console.log(p)
-	//return p.R(input);
 	return p.S(input);
 }
 
-function evaluate(tree,variables={}){
+function evaluate(tree,variables){
 	if(tree.t==TYPES.E||tree.t==TYPES.LE) {
 		var args = [];
 		for(var i = 0; i < tree.v.length; i++) {
@@ -160,7 +146,6 @@ function evaluate(tree,variables={}){
 		var fname = args.shift();
 		if(type_check(TYPES.STR|TYPES.FNAME,fname.t)) {
 			if(funcs[fname.v]){
-				//return funcs[fname].func(args);
 				return fcall(funcs[fname.v],args,variables)
 			}
 		}
@@ -173,7 +158,7 @@ function type_check(base_type,check_type) {
 
 function fcall(f,args,variables) {
 	if(typeof f.arg_type == "function") {
-		f.arg_types(args.map(arg=>arg.t));
+		f.arg_type(args.map(function(arg){return arg.t}));
 	}else if(typeof f.arg_type == "number") {
 		for(var i = 0; i < args.length; i++) {
 			type_check(f.arg_type,args[i].t);
@@ -185,14 +170,7 @@ function fcall(f,args,variables) {
 	}else {
 
 	}
-	var result = f.func(args.map(arg=>arg.v),variables);
+	var result = f.func(args.map(function(arg){return arg.v}),variables);
 
 	return {t:f.return_type,v:result};
 }
-/*
-if(!module) var module={};
-module.exports = {
-	parse:parse,
-	evaluate:evaluate
-};
-*/
