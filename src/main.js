@@ -12,6 +12,7 @@ var TYPES = {
 	ARR:1<<16,
 	E:1<<17,
 	LE:1<<18,
+	ALL:0xffffffff
 }
 
 var parse = function(input){
@@ -102,7 +103,6 @@ var parse = function(input){
 			if(input[c]=="[") c++;
 			var res = p.L();
 			if(input[c]=="]") c++;
-			return res;
 			return {t:TYPES.ARR,v:res,p:st};
 		},
 		E:function(){
@@ -132,13 +132,14 @@ var parse = function(input){
 }
 
 function evaluate(tree,variables){
+	if(!variables) variables = {};
 	if(tree.t==TYPES.E||tree.t==TYPES.LE) {
 		var args = [];
 		for(var i = 0; i < tree.v.length; i++) {
 			if(tree.v[i].t==TYPES.E) {
 				args[i] = evaluate(tree.v[i],variables);
 			}else if(tree.v[i].t==TYPES.VAR) {
-
+				args[i] = variables[tree.v[i].v];
 			}else {
 				args[i] = tree.v[i];
 			}
@@ -170,7 +171,7 @@ function fcall(f,args,variables) {
 	}else {
 
 	}
-	var result = f.func(args.map(function(arg){return arg.v}),variables);
+	var result = f.func(args,variables);
 
 	return {t:f.return_type,v:result};
 }
@@ -182,4 +183,8 @@ function copy(variables) {
 		local_variables[keys[i]] = variables[i];
 	}
 	return local_variables;
+}
+
+function get_values(args) {
+	return args.map(function(arg){return arg.v})
 }
