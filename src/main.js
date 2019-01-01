@@ -136,7 +136,8 @@ function evaluate(tree,variables){
 	if(tree.t==TYPES.E||tree.t==TYPES.LE) {
 		var args = [];
 		for(var i = 0; i < tree.v.length; i++) {
-			if(tree.v[i].t==TYPES.E) {
+			//if(tree.v[i].t==TYPES.E) {
+			if(type_check(TYPES.E|TYPES.ARR,tree.v[i].t)) {
 				args[i] = evaluate(tree.v[i],variables);
 			}else if(tree.v[i].t==TYPES.VAR) {
 				args[i] = variables[tree.v[i].v];
@@ -150,6 +151,15 @@ function evaluate(tree,variables){
 				return fcall(funcs[fname.v],args,variables)
 			}
 		}
+	}else if(tree.t==TYPES.ARR) {
+		for(var i = 0; i < tree.v.length; i++) {
+			tree.v[i] = evaluate(tree.v[i],variables);
+		}
+		return tree;
+	}else if(tree.t==TYPES.VAR) {
+		return variables[tree.v];
+	}else {
+		return tree;
 	}
 }
 
@@ -180,7 +190,7 @@ function copy(variables) {
 	var local_variables = {};
 	var keys = Object.keys(variables);
 	for(var i = 0; i < keys.length; i++) {
-		local_variables[keys[i]] = variables[i];
+		local_variables[keys[i]] = variables[keys[i]];
 	}
 	return local_variables;
 }
