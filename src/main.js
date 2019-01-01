@@ -144,13 +144,14 @@ var parse = function(input){
 
 	function parse_arr_without_value(_arr) {
 		var ret = [];
+		var ret = {};
 		for(var i = 0; i < _arr.v.length; i++) {
 			var elem = _arr.v[i];
 			if(elem.v.length>1) elem = parse_arr_without_value(elem);
-			delete elem.v;
+			else delete elem.v;
 			ret[i] = elem;
 		}
-		return ret;
+		return {t:_arr.t,v:ret,p:_arr.p};
 	}
 	var tree_only_value = parse_arr_only_value(tree);
 	var tree_without_value = parse_arr_without_value(tree);
@@ -164,24 +165,23 @@ function evaluate(v_tree,t_tree,variables){
 		var t_args = [];
 		for(var i = 0; i < v_tree.length; i++) {
 			var elem;
-			if(t_tree[i].t==TYPES.E) {
-				elem = evaluate(v_tree[i],t_tree[i],variables);
+			if(t_tree.v[i].t==TYPES.E) {
+				elem = evaluate(v_tree[i],t_tree.v[i],variables);
 				args[i] = elem.v;
 				t_args[i] = elem;
 				delete t_args[i].v;
-			}else if(t_tree[i].t==TYPES.VAR) {
+			}else if(t_tree.v[i].t==TYPES.VAR) {
 				elem = variables[v_tree[i]]|null;
 				args[i] = elem.v|null;
 				t_args[i] = elem.t|TYPES.NULL;
 			}else {
 				args[i] = v_tree[i];
-				t_args[i] = t_tree[i];
+				t_args[i] = t_tree.v[i];
 			}
 		}
-		console.log(args,t_args);
 		var fname = args.shift();
 		var fname_t = t_args.shift();
-		if(type_check(TYPES.STR|TYPES.FNAME,fname_t)) {
+		if(type_check(TYPES.STR|TYPES.FNAME,fname_t.t)) {
 			if(funcs[fname]){
 				return fcall(funcs[fname],args,t_args,variables)
 			}
@@ -194,7 +194,6 @@ function type_check(base_type,check_type) {
 }
 
 function fcall(f,args,t_args,variables) {
-	console.log(f,args,t_args,variables)
 	if(typeof f.arg_type == "function") {
 		f.arg_type(t_args.map(function(arg){return t_args.t}));
 	}else if(typeof f.arg_type == "number") {
