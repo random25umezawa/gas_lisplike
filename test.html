@@ -5,7 +5,7 @@
 	for(let statement of json) {
 		let tree = parse(statement);
 		console.log(tree);
-		let val = evaluate(tree);
+		let val = evaluate(tree[0],tree[1]);
 		console.log(val);
 	}
 </script>

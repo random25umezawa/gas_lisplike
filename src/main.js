@@ -128,25 +128,62 @@ var parse = function(input){
 			return p.E();
 		}
 	}
-	return p.S(input);
+
+	var tree = p.S(input);
+
+	function parse_arr_only_value(_arr) {
+		var ret = [];
+		for(var i = 0; i < _arr.v.length; i++) {
+			var elem = _arr.v[i];
+			if(elem.v.length>1) elem = parse_arr_only_value(elem);
+			else elem = elem.v;
+			ret[i] = elem;
+		}
+		return ret;
+	}
+
+	function parse_arr_without_value(_arr) {
+		var ret = [];
+		for(var i = 0; i < _arr.v.length; i++) {
+			var elem = _arr.v[i];
+			if(elem.v.length>1) elem = parse_arr_without_value(elem);
+			delete elem.v;
+			ret[i] = elem;
+		}
+		return ret;
+	}
+	var tree_only_value = parse_arr_only_value(tree);
+	var tree_without_value = parse_arr_without_value(tree);
+	return [tree_only_value,tree_without_value];
 }
 
-function evaluate(tree,variables){
-	if(tree.t==TYPES.E||tree.t==TYPES.LE) {
+function evaluate(v_tree,t_tree,variables){
+	if(!variables) variables={};
+	if(t_tree.t==TYPES.E||t_tree.t==TYPES.LE) {
 		var args = [];
-		for(var i = 0; i < tree.v.length; i++) {
-			if(tree.v[i].t==TYPES.E) {
-				args[i] = evaluate(tree.v[i],variables);
-			}else if(tree.v[i].t==TYPES.VAR) {
-
+		var t_args = [];
+		for(var i = 0; i < v_tree.length; i++) {
+			var elem;
+			if(t_tree[i].t==TYPES.E) {
+				elem = evaluate(v_tree[i],t_tree[i],variables);
+				args[i] = elem.v;
+				t_args[i] = elem;
+				delete t_args[i].v;
+			}else if(t_tree[i].t==TYPES.VAR) {
+				elem = variables[v_tree[i]]|null;
+				args[i] = elem.v|null;
+				t_args[i] = elem.t|TYPES.NULL;
 			}else {
-				args[i] = tree.v[i];
+				args[i] = v_tree[i];
+				t_args[i] = t_tree[i];
 			}
 		}
+		console.log(args,t_args);
 		var fname = args.shift();
-		if(type_check(TYPES.STR|TYPES.FNAME,fname.t)) {
-			if(funcs[fname.v]){
-				return fcall(funcs[fname.v],args,variables)
+		var fname_t = t_args.shift();
+		if(type_check(TYPES.STR|TYPES.FNAME,fname_t)) {
+			if(funcs[fname]){
+				return fcall(funcs[fname],args,t_args,variables)
 			}
 		}
 	}
@@ -156,21 +193,22 @@ function type_check(base_type,check_type) {
 	return (base_type&check_type)!=0;
 }
 
-function fcall(f,args,variables) {
+function fcall(f,args,t_args,variables) {
+	console.log(f,args,t_args,variables)
 	if(typeof f.arg_type == "function") {
-		f.arg_type(args.map(function(arg){return arg.t}));
+		f.arg_type(t_args.map(function(arg){return t_args.t}));
 	}else if(typeof f.arg_type == "number") {
 		for(var i = 0; i < args.length; i++) {
-			type_check(f.arg_type,args[i].t);
+			type_check(f.arg_type,t_args[i].t);
 		}
 	}else if(f.arg_type != null && typeof f.arg_type == "object"){
 		for(var i = 0; i < f.arg_type.length; i++) {
-			type_check(f.arg_type,args[i].t|TYPES.NULL);
+			type_check(f.arg_type,t_args[i].t|TYPES.NULL);
 		}
 	}else {
 
 	}
-	var result = f.func(args.map(function(arg){return arg.v}),variables);
+	var result = f.func(args,t_args,variables);
 
 	return {t:f.return_type,v:result};
 }
