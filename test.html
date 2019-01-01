@@ -1,0 +1,11 @@
+<script src="./src/main.js"></script>
+<script src="./src/add.js"></script>
+<script src="./data.js"></script>
+<script>
+	for(let statement of json) {
+		let tree = parse(statement);
+		console.log(tree);
+		let val = evaluate(tree);
+		console.log(val);
+	}
+</script>
