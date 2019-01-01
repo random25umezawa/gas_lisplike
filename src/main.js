@@ -17,6 +17,15 @@ var TYPES = {
 
 var parse = function(input){
 	var c = 0;
+	var lines = input.split("\n");
+	lines = lines.reduce(function(pre,now){pre.push(pre[pre.length-1]+now.length+1);return pre},[0]);
+	console.log(lines);
+	function check_pos(_pos) {
+		var i = 0;
+		while(_pos>lines[i]) i++;
+		i=Math.max(i,1);
+		return [i,_pos-lines[i-1]];
+	}
 	var p = {
 		w:['\t','\r','\n','\0',' ','　',undefined].reduce(function(a,b){a[b]=true;return a},{}),
 		le:[')',']','}'].reduce(function(a,b){a[b]=true;return a},{}),
@@ -43,21 +52,24 @@ var parse = function(input){
 			var st = c;
 			while(!(input[c]=='"'&&input[c-1]!='\\')) c++;
 			if(input[c]=='"') c++;
-			return {t:TYPES.STR,v:input.substring(st,c),p:st};
+			var pos = check_pos(st);
+			return {t:TYPES.STR,v:input.substring(st,c),l:pos[0],p:pos[1]};
 		},
 		VAR:function(){
 			if(input[c]=="$") c++;
 			var st = c;
 			while(!p.te[input[c]]) c++;
-			return {t:TYPES.VAR,v:input.substring(st,c),p:st};
+			var pos = check_pos(st);
+			return {t:TYPES.VAR,v:input.substring(st,c),l:pos[0],p:pos[1]};
 		},
 		TOKEN:function(){
 			var st = c;
 			while(!p.te[input[c]]) c++;
 			var res = input.substring(st,c);
-			var val = {t:TYPES.FNAME,v:res,p:st};
-			if(res=="true"||res=="false") val = {t:TYPES.BOOL,v:res=="true",p:st};
-			if(!isNaN(res)) val = {t:TYPES.NUMBER,v:Number(res),p:st};
+			var pos = check_pos(st);
+			var val = {t:TYPES.FNAME,v:res,l:pos[0],p:pos[1]};
+			if(res=="true"||res=="false") val = {t:TYPES.BOOL,v:res=="true",l:pos[0],p:pos[1]};
+			if(!isNaN(res)) val = {t:TYPES.NUMBER,v:Number(res),l:pos[0],p:pos[1]};
 			return val;
 		},
 		T:function(){
@@ -103,21 +115,24 @@ var parse = function(input){
 			if(input[c]=="[") c++;
 			var res = p.L();
 			if(input[c]=="]") c++;
-			return {t:TYPES.ARR,v:res,p:st};
+			var pos = check_pos(st);
+			return {t:TYPES.ARR,v:res,l:pos[0],p:pos[1]};
 		},
 		E:function(){
 			var st = c;
 			if(input[c]=="(") c++;
 			var res = p.L();
 			if(input[c]==")") c++;
-			return {t:TYPES.E,v:res,p:st};
+			var pos = check_pos(st);
+			return {t:TYPES.E,v:res,l:pos[0],p:pos[1]};
 		},
 		LE:function(){
 			var st = c;
 			if(input[c]=="{") c++;
 			var res = p.L();
 			if(input[c]=="}") c++;
-			return {t:TYPES.LE,v:res,p:st};
+			var pos = check_pos(st);
+			return {t:TYPES.LE,v:res,l:pos[0],p:pos[1]};
 		},
 		S:function(){
 			while(true) {
@@ -132,34 +147,46 @@ var parse = function(input){
 }
 
 function evaluate(tree,variables){
-	if(!variables) variables = {};
-	if(tree.t==TYPES.E||tree.t==TYPES.LE) {
-		var args = [];
-		for(var i = 0; i < tree.v.length; i++) {
-			//if(tree.v[i].t==TYPES.E) {
-			if(type_check(TYPES.E|TYPES.ARR,tree.v[i].t)) {
-				args[i] = evaluate(tree.v[i],variables);
-			}else if(tree.v[i].t==TYPES.VAR) {
-				args[i] = variables[tree.v[i].v];
-			}else {
-				args[i] = tree.v[i];
+	try{
+		if(!variables) variables = {};
+		if(tree.t==TYPES.E||tree.t==TYPES.LE) {
+			if(tree.v.length<=0) {
+				throw("no function in Evaluation or Lazy-Evaluation");
 			}
-		}
-		var fname = args.shift();
-		if(type_check(TYPES.STR|TYPES.FNAME,fname.t)) {
-			if(funcs[fname.v]){
-				return fcall(funcs[fname.v],args,variables)
+			var args = [];
+			for(var i = 0; i < tree.v.length; i++) {
+				//if(tree.v[i].t==TYPES.E) {
+				if(type_check(TYPES.E|TYPES.ARR|TYPES.VAR,tree.v[i].t)) {
+					args[i] = evaluate(tree.v[i],variables);
+					/*
+				}else if(tree.v[i].t==TYPES.VAR) {
+					args[i] = variables[tree.v[i].v];
+					*/
+				}else {
+					args[i] = tree.v[i];
+				}
 			}
+			var fname = args.shift();
+			if(type_check(TYPES.STR|TYPES.FNAME,fname.t)) {
+				if(funcs[fname.v]){
+					return fcall(funcs[fname.v],args,variables)
+				}
+			}
+		}else if(tree.t==TYPES.ARR) {
+			for(var i = 0; i < tree.v.length; i++) {
+				tree.v[i] = evaluate(tree.v[i],variables);
+			}
+			return tree;
+		}else if(tree.t==TYPES.VAR) {
+			if(!variables[tree.v]) throw("not defined Variable '$"+tree.v+"'");
+			return variables[tree.v];
+		}else {
+			return tree;
 		}
-	}else if(tree.t==TYPES.ARR) {
-		for(var i = 0; i < tree.v.length; i++) {
-			tree.v[i] = evaluate(tree.v[i],variables);
-		}
-		return tree;
-	}else if(tree.t==TYPES.VAR) {
-		return variables[tree.v];
-	}else {
-		return tree;
+	}catch(e) {
+		if(e) console.log(e);
+		console.log("\tat line "+tree.l+" pos "+tree.p+" , ");
+		throw("")
 	}
 }
 

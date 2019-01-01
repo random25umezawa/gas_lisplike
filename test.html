@@ -6,7 +6,11 @@
 	for(let statement of json) {
 		let tree = parse(statement);
 		console.log(tree);
-		let val = evaluate(tree);
-		console.log(val);
+		try{
+			let val = evaluate(tree);
+			console.log(val);
+		}catch(e) {
+			console.log(e);
+		}
 	}
 </script>
