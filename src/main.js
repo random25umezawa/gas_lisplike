@@ -3,7 +3,7 @@ var funcs = {};
 var TYPES = {
 	STR:1<<6,
 	VAR:1<<7,
-	FNAME:1<8,
+	FNAME:1<<8,
 	BOOL:1<<4,
 	NUMBER:(1<<2)|(1<<3),
 	INT:1<<2,
@@ -173,4 +173,13 @@ function fcall(f,args,variables) {
 	var result = f.func(args.map(function(arg){return arg.v}),variables);
 
 	return {t:f.return_type,v:result};
+}
+
+function copy(variables) {
+	var local_variables = {};
+	var keys = Object.keys(variables);
+	for(var i = 0; i < keys.length; i++) {
+		local_variables[keys[i]] = variables[i];
+	}
+	return local_variables;
 }
